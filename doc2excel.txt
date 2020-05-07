@@ -1,0 +1,64 @@
+Sub ReadFromWord()
+    Dim oWordApp As Object, oDoc As Object, txt$
+    Dim myPath$, MyName$, k%, Result(1 To 1000, 1 To 6), textNumber$, dateText$, RowCount%, names$, nameText$, offer$
+   
+    On Error Resume Next
+    Range("A2:F2000").ClearContents
+    myPath = ThisWorkbook.Path & "\docs\"
+    MyName = Dir(myPath & "*.doc*")
+    Set oWordApp = CreateObject("Word.Application")
+
+    Do While MyName <> ""
+        If InStr(1, MyName, "异动") Then
+            Set oDoc = GetObject(myPath & MyName)
+            txt = oDoc.Range.Text
+            oDoc.Close True
+            textNumber = Replace(Replace(RegxFind(txt, "(灵编通字.{6}\d+号)", 0), "]", "）"), "[", "（")
+            dateText = RegxFind(txt, "(\d{4}年\d{1,2}月\d{1,2}日)", 0)
+            
+            names = ""
+            Set oDoc = GetObject(myPath & MyName)
+            With oDoc
+                With .Tables(1)
+                    RowCount = 1
+                    offer = RegxFind(Replace(.cell(2, 3).Range.Text, " ", ""), "([\u4e00-\u9fa5]+)", 0)
+                    Do While RowCount < .Rows.Count
+                        RowCount = RowCount + 1
+                        nameText = RegxFind(Replace(.cell(RowCount, 1).Range.Text, " ", ""), "([\u4e00-\u9fa5]+)", 0)
+                        If names = "" Then
+                            names = nameText
+                        Else
+                            names = names + "、" + nameText
+                        End If
+                    Loop
+                    k = k + 1
+                    Result(k, 1) = k
+                    Result(k, 2) = textNumber
+                    Result(k, 3) = "编委办"
+                    Result(k, 4) = names + "调" + offer
+                    Result(k, 5) = Replace(Replace(Replace(dateText, "年", "."), "月", "."), "日", "")
+                End With
+                .Close False
+            End With
+            Range("A1:F1") = Array("序号", "文号", "责任者", "题名", "日期", "备注")
+        End If
+        MyName = Dir
+    Loop
+    Range("A2").Resize(k, 6) = Result
+    Set oWordApp = Nothing
+End Sub
+
+Function RegxFind(strValue As String, strFind As String, Num As Integer) As String
+    Dim RegX As Object, objMatchs As Object
+    Dim strTemp As String
+   
+    Set RegX = CreateObject("vbscript.regexp")
+    RegX.Pattern = strFind
+   
+    Set objMatchs = RegX.Execute(strValue)
+    strTemp = objMatchs(0).SubMatches(Num)
+   
+    Set RegX = Nothing
+    RegxFind = strTemp
+End Function
+
